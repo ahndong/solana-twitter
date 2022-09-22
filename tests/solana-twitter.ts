@@ -10,6 +10,20 @@ describe("solana-twitter", () => {
 
   const program = anchor.workspace.SolanaTwitter as Program<SolanaTwitter>;
 
+  const sendTweet = async (author, topic, content) => {
+    const tweet = anchor.web3.Keypair.generate();
+    await program.rpc.sendTweet(topic, content, {
+        accounts: {
+            tweet: tweet.publicKey,
+            author,
+            systemProgram: anchor.web3.SystemProgram.programId,
+        },
+        signers: [tweet],
+    });
+
+    return tweet
+  }
+
   it('can send a new tweet', async () => {
     // Before sending the transaction to the blockchain.
     const tweet = anchor.web3.Keypair.generate();
@@ -103,12 +117,13 @@ describe("solana-twitter", () => {
         },
         signers: [tweet],
       });
-    } catch (error) {
-      assert.equal(error.msg, 'The provided topic should be 50 characters long maximum.');
+    } catch (err) {
+      const errMsg ="The provided topic should be 50 characters long maximum.";
+      assert.equal(err.error.errorMessage, errMsg);
       return;
     }
 
-    assert.fail('The instruction should have failed with a 51-character topic.');
+    assert.fail('The instruction should have failed with a 51-character topic. Why this works??T.T');
   });
 
 
@@ -124,9 +139,10 @@ describe("solana-twitter", () => {
             },
             signers: [tweet],
         });
-    } catch (error) {
-        assert.equal(error.msg, 'The provided content should be 280 characters long maximum.');
-        return;
+    } catch (err) {
+      const errMsg ="The provided content should be 280 characters long maximum.";
+      assert.equal(err.error.errorMessage, errMsg);
+      return;
     }
 
     assert.fail('The instruction should have failed with a 281-character content.');
@@ -153,27 +169,73 @@ describe("solana-twitter", () => {
     assert.ok(tweetAccounts.every(tweetAccount => {
         return tweetAccount.account.author.toBase58() === authorPublicKey.toBase58()
     }))
-});
+  });
 
-it('can filter tweets by topics', async () => {
+  it('can filter tweets by topics', async () => {
     const tweetAccounts = await program.account.tweet.all([
-        {
-            memcmp: {
-                offset: 8 + // Discriminator.
-                    32 + // Author public key.
-                    8 + // Timestamp.
-                    4, // Topic string prefix.
-                bytes: bs58.encode(Buffer.from('veganism')),
-            }
+      {
+        memcmp: {
+          offset: 8 + // Discriminator.
+            32 + // Author public key.
+            8 + // Timestamp.
+            4, // Topic string prefix.
+          bytes: bs58.encode(Buffer.from('veganism')),
         }
+      }
     ]);
 
     assert.equal(tweetAccounts.length, 2);
     assert.ok(tweetAccounts.every(tweetAccount => {
-        return tweetAccount.account.topic === 'veganism'
+      return tweetAccount.account.topic === 'veganism'
     }))
-});
+  });
 
+
+  it('can update a tweet', async () => {
+    // Send a tweet and fetch its account.
+    const author = program.provider.wallet.publicKey;
+    const tweet = await sendTweet(author, 'web2', 'Hello World!');
+    const tweetAccount = await program.account.tweet.fetch(tweet.publicKey);
+
+    // Ensure it has the right data.
+    assert.equal(tweetAccount.topic, 'web2');
+    assert.equal(tweetAccount.content, 'Hello World!');
+
+    // Update the Tweet.
+    await program.rpc.updateTweet('solana', 'gm everyone!', {
+      accounts: {
+        tweet: tweet.publicKey,
+        author,
+      },
+    });
+
+    // Ensure the updated tweet has the updated data.
+    const updatedTweetAccount = await program.account.tweet.fetch(tweet.publicKey);
+    assert.equal(updatedTweetAccount.topic, 'solana');
+    assert.equal(updatedTweetAccount.content, 'gm everyone!');
+  });
+
+  it('cannot update someone else\'s tweet', async () => {
+    // Send a tweet.
+    const author = program.provider.wallet.publicKey;
+    const tweet = await sendTweet(author, 'solana', 'Solana is awesome!');
+
+    // Update the Tweet.
+    try {
+      await program.rpc.updateTweet('eth', 'Ethereum is awesome!', {
+        accounts: {
+          tweet: tweet.publicKey,
+          author: anchor.web3.Keypair.generate().publicKey,
+        },
+      });
+      assert.fail('We were able to update someone else\'s tweet. Something went wrong.');
+    } catch (error) {
+      // Ensure the tweet account kept the initial data.
+      const tweetAccount = await program.account.tweet.fetch(tweet.publicKey);
+      assert.equal(tweetAccount.topic, 'solana');
+      assert.equal(tweetAccount.content, 'Solana is awesome!');
+    }
+  });
 
   // it("Is initialized!", async () => {
   //   // Add your test here.
