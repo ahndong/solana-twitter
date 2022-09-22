@@ -80,6 +80,6 @@
         </div>
     </div>
     <div v-else class="px-8 py-4 bg-gray-50 text-gray-500 text-center border-b">
-        Welcome, first! ^^/ Connect your wallet to start tweeting...
+        Welcome, first! m(^o^)/ Connect your wallet to start tweeting...
     </div>
 </template>
