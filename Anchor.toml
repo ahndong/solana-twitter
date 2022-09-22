@@ -15,7 +15,7 @@ solana_twitter = "3wAuQHUKcPXXRTiPXWBULXm6LALg6v78UjWGbyeQmysp"
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "devnet"
+cluster = "localnet"
 wallet = "/home/ahndoro/.config/solana/id.json"
 
 [scripts]
