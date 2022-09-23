@@ -60,7 +60,9 @@
                 </div>
             </div>
             <p class="whitespace-pre-wrap break-all" v-text="tweet.content"></p>
-            <router-link v-if="tweet.topic" :to="{ name: 'Topics', params: { topic: tweet.topic } }" class="inline-block mt-2 text-pink-500 hover:underline">
+            <!-- 페이지네이션 설정 시, 삭제 -->
+            <!-- <router-link v-if="tweet.topic" :to="{ name: 'Topics', params: { topic: tweet.topic } }" class="inline-block mt-2 text-pink-500 hover:underline"> -->
+            <router-link v-if="tweet.topic" :to="{ name: 'Topics', params: { topic: tweet.topic } }" class="inline-block mt-2 text-pink-500 hover:underline break-all">
                 #{{ tweet.topic }}
             </router-link>
         </div>
